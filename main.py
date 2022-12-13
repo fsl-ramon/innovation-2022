@@ -24,8 +24,7 @@ with open("pubkey.pem", "rb") as f:
 def index():
     if request.method == 'POST':
         try:
-            request_json = request.get_json()
-            data = request_json['data']
+            data = request.get_json()
             signature = request.headers['wepay-signature']
             payload = data['payload']
             # check data.topic attribute
