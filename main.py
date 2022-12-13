@@ -1,4 +1,5 @@
 import os
+import json
 from google.cloud import pubsub_v1
 from flask import Flask, request
 
@@ -16,18 +17,27 @@ topic_path = publisher.topic_path(
 def index():
     if request.method == 'POST':
         try:
-            data = request.get_json()
-            payload = data['data']
-            topic_name = payload['topic']
+            request_json = request.get_json()
+            data = request_json['data']
+            payload = data['payload']
+            # check data.topic attribute
+            if not data['topic']:
+                return 'Error', 500
+
+            # seems 'topic' is a reserved word in PubSub attributes
+            data['topic_name'] = data.pop('topic')
+
+            topic_name = data['topic_name']
             message = "WePay Clear Notification received with topic {}".format(
                 topic_name)
 
+            title = message.encode("utf-8")
             attributes = {
-                "topicName": topic_name,
+                "topic_name": topic_name,
+                "payload": json.dumps(payload),
             }
 
-            data = message.encode("utf-8")
-            future = publisher.publish(topic_path, data, **attributes)
+            future = publisher.publish(topic_path, title, **attributes)
             print("Message published with ID: {}".format(future.result()))
         except Exception as e:
             print(e)
