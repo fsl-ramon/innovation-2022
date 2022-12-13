@@ -24,6 +24,7 @@ with open("pubkey.pem", "rb") as f:
 def index():
     if request.method == 'POST':
         try:
+            body = request.data
             data = request.get_json()
             signature = request.headers['wepay-signature']
             payload = data['payload']
@@ -41,7 +42,7 @@ def index():
             else:
                 # verify request signature
                 verifier = WePayClearSignatureVerifier(public_key)
-                if not verifier.verify_signatures(data, signature):
+                if not verifier.verify_signatures(body, signature):
                     return 'Invalid signature', 200
 
             # seems 'topic' is a reserved word in PubSub attributes

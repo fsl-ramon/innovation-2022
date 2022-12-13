@@ -15,7 +15,7 @@ class WePayClearSignatureVerifier:
     We modified some of this logic from the original to accommodate our own integration.
     """
 
-    def __init__(self, pubkey: str):
+    def __init__(self, pubkey):
         # Obtain and insert the WePay public key.
         self.public_key = RSA.import_key(pubkey)
 
@@ -80,6 +80,7 @@ class WePayClearSignatureVerifier:
                     return True
             print("Either signature or payload have invalid format")
             return False
-        except Exception:
+        except Exception as e:
+            print(e)
             print("WePay Clear Notification signature could not be validated")
             return False
