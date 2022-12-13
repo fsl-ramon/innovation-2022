@@ -3,6 +3,8 @@ import json
 from signature_verifier import WePayClearSignatureVerifier
 from google.cloud import pubsub_v1
 from flask import Flask, request
+from update_notification_request import WePayClearNotificationUpdateRequest
+from update_request_factory import WePayClearConnectionUpdateRequestFactory
 
 app = Flask(__name__)
 
@@ -18,6 +20,26 @@ topic_path = publisher.topic_path(
 # load public key
 with open("pubkey.pem", "rb") as f:
     public_key = f.read()
+
+
+def process_request_payload(topic_name: str, payload: dict) -> WePayClearNotificationUpdateRequest:
+    update_request_factory = WePayClearConnectionUpdateRequestFactory()
+
+    # map topic name to update request factory method
+    handlers = {
+        "legal_entities.updated": update_request_factory.from_legal_entity_dict,
+        "legal_entities.verifications.updated": update_request_factory.from_legal_entity_verification_dict,
+        "accounts.capabilities.updated": update_request_factory.from_accounts_capabilities_entity_dict,
+    }
+
+    # get handler for topic name
+    handler = handlers.get(topic_name, None)
+
+    # if handler exists, call it with payload data
+    if handler:
+        return handler(payload)
+
+    return None
 
 
 @app.route('/', methods=['POST'])
@@ -41,9 +63,10 @@ def index():
                 return 'Missing signature', 200
             else:
                 # verify request signature
-                verifier = WePayClearSignatureVerifier(public_key)
-                if not verifier.verify_signatures(body, signature):
-                    return 'Invalid signature', 200
+                if os.environ.get('FLASK_ENV') == 'production':
+                    verifier = WePayClearSignatureVerifier(public_key)
+                    if not verifier.verify_signatures(body, signature):
+                        return 'Invalid signature', 200
 
             # seems 'topic' is a reserved word in PubSub attributes
             data['topic_name'] = data.pop('topic')
@@ -53,9 +76,14 @@ def index():
                 topic_name)
 
             title = message.encode("utf-8")
+
+            attribute_payload = process_request_payload(topic_name, payload)
+            if not attribute_payload:
+                return 'Invalid topic', 200
+
             attributes = {
                 "topic_name": topic_name,
-                "payload": json.dumps(payload),
+                "payload": json.dumps(attribute_payload.dict(exclude_none=True)),
             }
 
             future = publisher.publish(topic_path, title, **attributes)
