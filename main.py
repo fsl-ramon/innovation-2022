@@ -81,9 +81,17 @@ def index():
             if not attribute_payload:
                 return 'Invalid topic', 200
 
+            pubsub_data = {
+                'id': payload["id"],
+                'owner': {
+                    'id': data["owner"]["id"]
+                },
+                'payload': attribute_payload.dict(exclude_none=True)
+            }
+
             attributes = {
                 "topic_name": topic_name,
-                "payload": json.dumps(attribute_payload.dict(exclude_none=True)),
+                "topic_data": json.dumps(pubsub_data),
             }
 
             future = publisher.publish(topic_path, title, **attributes)
