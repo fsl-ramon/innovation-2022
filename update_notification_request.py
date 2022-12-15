@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class WePayClearNotificationUpdateRequest(BaseModel):
+    id: str
     payments_enabled: Optional[bool] = None
     email_is_verified: Optional[bool] = None
     legal_entity_verified: Optional[bool] = None
